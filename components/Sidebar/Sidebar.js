@@ -24,7 +24,7 @@ function Sidebar() {
     if(EmailValidator.validate(input)){
       // We need to add the chat info the DB 'chats' collection
     }
-  }
+  };
 
   return (
     <Container>
