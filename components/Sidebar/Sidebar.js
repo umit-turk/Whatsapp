@@ -32,7 +32,11 @@ function Sidebar() {
 
     if (!input) return null;
 
-    if (EmailValidator.validate(input) && !chatAlreadyExists && input !== user.email) {
+    if (
+      EmailValidator.validate(input) &&
+      !chatAlreadyExists(input) &&
+      input !== user.email
+    ) {
       // We need to add the chat info the DB 'chats' collection if it doesn't exist and is valid
       db.collection("chats").add({
         users: [user.email, input],
@@ -40,12 +44,11 @@ function Sidebar() {
     }
   };
 
-  const chatAlreadyExists = (recipientEmail) => 
+  const chatAlreadyExists = (recipientEmail) =>
     !!chatsSnapshot?.docs.find(
       (chat) =>
         chat.data().users.find((user) => user === recipientEmail)?.length > 0
     );
-  
 
   return (
     <Container>
@@ -70,8 +73,8 @@ function Sidebar() {
       <SidebarButton onClick={createChat}>Start a new chat</SidebarButton>
 
       {/* List of chats */}
-      {chatsSnapshot?.docs.map(chat => (
-        <Chat key={chat.id} id={chat.id} user={chat.data().users}></Chat>
+      {chatsSnapshot?.docs.map((chat) => (
+        <Chat key={chat.id} id={chat.id} user={chat.data().users} />
       ))}
     </Container>
   );
