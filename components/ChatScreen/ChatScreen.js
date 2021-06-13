@@ -7,9 +7,18 @@ import MoreVertIcon from "@material-ui/icons/MoreVert";
 import AttachFileIcon from "@material-ui/icons/AttachFile";
 import { IconButton } from "@material-ui/core";
 import { useCollection } from "react-firebase-hooks/firestore";
+import InsertEmoticonIcon from "@material-ui/icons/InsertEmoticon";
+import MicIcon from "@material-ui/icons/Mic";
+import Message from "../Message/Message";
+import { useState } from "react";
+import firebase from "firebase";
+import getRecipientEmail from "../../utils/getRecipientEmail";
+import TimeAgo from "timeago-react";
 
 function ChatScreen({ chat, messages }) {
   const [user] = useAuthState(auth);
+  const [input, setInput] = useState("");
+
   const router = useRouter();
   const [messagesSnapshot] = useCollection(
     db
@@ -18,28 +27,77 @@ function ChatScreen({ chat, messages }) {
       .collection("messages")
       .orderBy("timestamp", "asc")
   );
+  const [recipientSnapshot] = useCollection(
+    db
+      .collection("users")
+      .where("email", "==", getRecipientEmail(chat.users, user))
+  );
 
   const showMessages = () => {
-      if(messagesSnapshot){
-          return messagesSnapshot.docs.map(message => (
-              <Message
-                key={message.id}
-                user={message.data().user}
-                message={{
-                    ...message.data(),
-                    timestamp: message.data().timestamp?.toDate().getTime(),
-                }}
-              />
-          ))
-      }
+    if (messagesSnapshot) {
+      return messagesSnapshot.docs.map((message) => (
+        <Message
+          key={message.id}
+          user={message.data().user}
+          message={{
+            ...message.data(),
+            timestamp: message.data().timestamp?.toDate().getTime(),
+          }}
+        />
+      ));
+    } else {
+      return JSON.parse(messages).map((message) => (
+        <Message key={message.id} user={message.user} message={message} />
+      ));
+    }
   };
+
+  const sendMessage = (e) => {
+    e.preventDefault();
+
+    // Update the last seen...
+    db.collection("users").doc(user.uid).set(
+      {
+        lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+    db.collection("chats").doc(router.query.id).collection("messages").add({
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      message: input,
+      user: user.email,
+      photoURL: user.photoURL,
+    });
+    
+
+    setInput("");
+  };
+
+  const recipient = recipientSnapshot?.docs?.[0]?.data();
+  const recipientEmail = getRecipientEmail(chat.users, user);
   return (
     <Container>
       <Header>
-        <Avatar />
+        {recipient ? (
+          <Avatar src={recipient?.photoURL} />
+        ) : (
+          <Avatar>{recipientEmail[0]}</Avatar>
+        )}
         <HeaderInformation>
-          <h3>Rec E mail</h3>
-          <p>Last seen...</p>
+          <h3>{recipientEmail}</h3>
+          {recipientSnapshot ? (
+            <p>
+              Last active:{" "}
+              {recipient?.lastSeen?.toDate() ? (
+                <TimeAgo datetime={recipient?.lastSeen?.toDate()} />
+              ) : (
+                "Unavailable"
+              )}
+            </p>
+          ) : (
+            <p>Loading Last active...</p>
+          )}
+          
         </HeaderInformation>
         <HeaderIcons>
           <IconButton>
@@ -52,9 +110,18 @@ function ChatScreen({ chat, messages }) {
       </Header>
 
       <MessageContainer>
-        {showMessages}
+        {showMessages()}
         <EndOfMessage />
       </MessageContainer>
+
+      <InputContainer>
+        <InsertEmoticonIcon />
+        <Input value={input} onChange={(e) => setInput(e.target.value)} />
+        <button hidden disabled={!input} type="submit" onClick={sendMessage}>
+          Send Message
+        </button>
+        <MicIcon />
+      </InputContainer>
     </Container>
   );
 }
@@ -62,6 +129,27 @@ function ChatScreen({ chat, messages }) {
 export default ChatScreen;
 
 const Container = styled.div``;
+
+const Input = styled.input`
+  flex: 1;
+  outline: 0;
+  border: none;
+  border-radius: 10px;
+  background-color: whitesmoke;
+  padding: 20px;
+  margin-left: 15px;
+  margin-right: 15px;
+`;
+const InputContainer = styled.form`
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  position: sticky;
+  bottom: 0;
+  background-color: white;
+  z-index: 100;
+`;
+
 const Header = styled.div`
   position: sticky;
   background-color: white;
@@ -74,6 +162,7 @@ const Header = styled.div`
   border-bottom: 1px solid whitesmoke;
 `;
 const HeaderInformation = styled.div`
+
   margin-left: 15px;
   flex: 1;
 
@@ -88,6 +177,11 @@ const HeaderInformation = styled.div`
 `;
 
 const EndOfMessage = styled.div``;
-const MessageContainer = styled.div``;
+
+const MessageContainer = styled.div`
+  padding: 30px;
+  background-color: #e5ded8;
+  min-height: 90vh;
+`;
 
 const HeaderIcons = styled.div``;
