@@ -52,7 +52,7 @@ function ChatScreen({ chat, messages }) {
       </Header>
 
       <MessageContainer>
-        {/* show messages */}
+        {showMessages}
         <EndOfMessage />
       </MessageContainer>
     </Container>
